@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'orqix-services'
+    static_configs:
+      - targets:
+          - 'host.docker.internal:8000' # Gateway / services
+          - 'host.docker.internal:8001' # Experiment service
+          - 'host.docker.internal:8002' # Workflow service
+          - 'host.docker.internal:8003' # Scheduler service
+          - 'host.docker.internal:8004' # Dataset service
+          - 'host.docker.internal:8005' # Registry service

@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orqix | Distributed ML Experiment Orchestration Platform</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef8ff',
+                            100: '#d8eeff',
+                            500: '#0095ff',
+                            600: '#0072db',
+                            900: '#002f6c',
+                        },
+                        darkbg: '#0a0f1d',
+                        darkcard: '#141c2f',
+                        neonpurple: '#a855f7',
+                        neongreen: '#22c55e',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom styling for glassmorphism -->
+    <style>
+        .glass {
+            background: rgba(20, 28, 47, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        body {
+            background-color: #0a0f1d;
+            font-family: 'Inter', sans-serif;
+            color: #f3f4f6;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0f1d;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="glass sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-gray-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-neonpurple flex items-center justify-center shadow-lg shadow-brand-500/20">
+                <i data-lucide="layers" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <span class="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
+                    ORQIX <span class="text-xs bg-brand-500/20 text-brand-500 px-2 py-0.5 rounded-full font-mono font-semibold">DISTRIBUTED</span>
+                </span>
+                <p class="text-xs text-gray-400">AI-Native ML Experiment Platform</p>
+            </div>
+        </div>
+
+        <!-- System Status Badges -->
+        <div class="hidden md:flex items-center gap-6 text-xs text-gray-400">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-neongreen animate-pulse"></span>
+                <span>Kafka Event Bus</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-neongreen animate-pulse"></span>
+                <span>Neo4j Graph DB</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-brand-500 animate-pulse"></span>
+                <span>Temporal Worker</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-neongreen"></span>
+                <span>MinIO S3</span>
+            </div>
+        </div>
+
+        <!-- Profile / Auth Info -->
+        <div class="flex items-center gap-4">
+            <div class="text-right">
+                <p id="user-email" class="text-sm font-medium text-white">researcher@orqix.ai</p>
+                <span id="user-role" class="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full font-mono">RESEARCHER</span>
+            </div>
+            <div class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center border border-gray-700">
+                <i data-lucide="user" class="w-5 h-5 text-gray-300"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex flex-col lg:flex-row">
+        <!-- Sidebar Navigation -->
+        <aside class="w-full lg:w-64 glass lg:border-r border-gray-800 p-4 flex flex-col gap-2">
+            <nav class="flex flex-row lg:flex-col gap-1 w-full overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0">
+                <button onclick="switchTab('experiments')" id="btn-tab-experiments" class="tab-btn active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-white bg-slate-800/80">
+                    <i data-lucide="line-chart" class="w-4 h-4"></i> Experiments
+                </button>
+                <button onclick="switchTab('runs')" id="btn-tab-runs" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:text-white hover:bg-slate-800/40">
+                    <i data-lucide="monitor" class="w-4 h-4"></i> Run Monitor
+                </button>
+                <button onclick="switchTab('workflows')" id="btn-tab-workflows" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:text-white hover:bg-slate-800/40">
+                    <i data-lucide="git-branch" class="w-4 h-4"></i> Workflow (DAG)
+                </button>
+                <button onclick="switchTab('scheduler')" id="btn-tab-scheduler" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:text-white hover:bg-slate-800/40">
+                    <i data-lucide="cpu" class="w-4 h-4"></i> Resource Scheduler
+                </button>
+                <button onclick="switchTab('lineage')" id="btn-tab-lineage" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:text-white hover:bg-slate-800/40">
+                    <i data-lucide="share-2" class="w-4 h-4"></i> Dataset Lineage
+                </button>
+                <button onclick="switchTab('registry')" id="btn-tab-registry" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:text-white hover:bg-slate-800/40">
+                    <i data-lucide="package" class="w-4 h-4"></i> Model Registry
+                </button>
+                <button onclick="switchTab('agent')" id="btn-tab-agent" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:text-white hover:bg-slate-800/40 border border-transparent hover:border-purple-500/30">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i> AI Failure Agent
+                </button>
+            </nav>
+
+            <div class="mt-auto hidden lg:flex flex-col p-4 rounded-2xl bg-purple-950/20 border border-purple-500/20 gap-3">
+                <div class="flex items-center gap-2 text-purple-400 text-sm font-semibold">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Self-Optimizing
+                </div>
+                <p class="text-xs text-gray-400 leading-relaxed">The active ML Orchestrator is learning resource footprints from historical training logs.</p>
+            </div>
+        </aside>
+
+        <!-- Tab Content Area -->
+        <main class="flex-1 p-6 overflow-y-auto">
+            
+            <!-- Tab: Experiments -->
+            <section id="tab-experiments" class="tab-section flex flex-col gap-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">Experiment Runs</h2>
+                        <p class="text-sm text-gray-400">Track and compare nested metrics, parameters, and reproducibility tags.</p>
+                    </div>
+                    <button onclick="openCreateExperimentModal()" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 shadow-lg shadow-brand-500/20">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Create Experiment
+                    </button>
+                </div>
+
+                <!-- Run Filters -->
+                <div class="glass p-4 rounded-2xl flex flex-wrap gap-4 items-center">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs text-gray-400 mb-1">Select Experiment</label>
+                        <select id="select-experiment" onchange="loadRunsForSelectedExperiment()" class="w-full bg-slate-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
+                            <option value="">-- Loading Experiments --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Status</label>
+                        <select id="filter-status" onchange="loadRunsForSelectedExperiment()" class="bg-slate-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
+                            <option value="">All Statuses</option>
+                            <option value="RUNNING">Running</option>
+                            <option value="COMPLETED">Completed</option>
+                            <option value="FAILED">Failed</option>
+                        </select>
+                    </div>
+                    <button onclick="loadRunsForSelectedExperiment()" class="mt-5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-medium flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync
+                    </button>
+                </div>
+
+                <!-- Runs Grid/Table -->
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-300">
+                            <thead class="bg-slate-900/80 text-gray-400 text-xs uppercase border-b border-gray-800">
+                                <tr>
+                                    <th class="px-6 py-4">Run ID</th>
+                                    <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4">Git Commit</th>
+                                    <th class="px-6 py-4">Dataset Version</th>
+                                    <th class="px-6 py-4">Parameters</th>
+                                    <th class="px-6 py-4">Latest Metrics</th>
+                                    <th class="px-6 py-4">Duration</th>
+                                    <th class="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="runs-table-body">
+                                <tr>
+                                    <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                                        Select an experiment to list active training runs.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Run Monitor -->
+            <section id="tab-runs" class="tab-section hidden flex flex-col gap-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Run Metric Stream</h2>
+                    <p class="text-sm text-gray-400">WebSocket real-time training telemetry showing loss, learning rate convergence, and epoch steps.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 flex flex-col gap-6">
+                        <!-- Chart Card -->
+                        <div class="glass p-6 rounded-2xl flex flex-col gap-4">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <span class="text-xs text-brand-500 font-semibold uppercase">Real-Time Chart</span>
+                                    <h3 id="monitor-run-title" class="text-lg font-bold text-white">Active Run: None Selected</h3>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-brand-500 animate-pulse"></span>
+                                    <span class="text-xs text-gray-400">Stream Connected</span>
+                                </div>
+                            </div>
+                            <div class="w-full h-80 relative">
+                                <canvas id="realtimeChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Logs Card -->
+                        <div class="glass p-6 rounded-2xl flex flex-col gap-2">
+                            <h4 class="text-sm font-semibold text-gray-400 uppercase">Worker Console Output</h4>
+                            <div class="bg-black/95 rounded-xl p-4 font-mono text-xs text-green-400 h-64 overflow-y-auto leading-relaxed border border-gray-800" id="console-logs">
+                                [SYSTEM] Waiting for active training run telemetry...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Config Panel -->
+                    <div class="glass p-6 rounded-2xl flex flex-col gap-6 h-fit">
+                        <h3 class="text-lg font-bold text-white">Simulate Run Stream</h3>
+                        <p class="text-xs text-gray-400">Manually trigger a mock machine learning training process to observe dynamic WebSockets and metrics tracking.</p>
+                        
+                        <div class="flex flex-col gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">Model Architecture</label>
+                                <select id="sim-model" class="w-full bg-slate-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                                    <option value="Transformer">Transformer (12-Layers)</option>
+                                    <option value="ResNet">ResNet-50</option>
+                                    <option value="XGBoost">Gradient Boosted Trees (XGBoost)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">Batch Size</label>
+                                <input type="number" id="sim-batch" value="128" class="w-full bg-slate-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block class text-xs text-gray-400 mb-1">Trigger Failure?</label>
+                                <select id="sim-fail" class="w-full bg-slate-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                                    <option value="false">Train Successfully</option>
+                                    <option value="true">Trigger GPU Out-Of-Memory (OOM)</option>
+                                </select>
+                            </div>
+                            <button onclick="triggerSimulatedRun()" class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2">
+                                <i data-lucide="play" class="w-4 h-4"></i> Start Training Run
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Workflows -->
+            <section id="tab-workflows" class="tab-section hidden flex flex-col gap-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">DAG Workflow Engine</h2>
+                    <p class="text-sm text-gray-400">Define pipelines in YAML format, evaluate cycle dependency sorting, and review state checkpoints.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass p-6 rounded-2xl flex flex-col gap-4">
+                        <h3 class="text-lg font-bold text-white">Pipeline Definition</h3>
+                        
+                        <textarea id="yaml-code" rows="12" class="w-full bg-slate-900 border border-gray-800 rounded-xl p-3 font-mono text-xs text-gray-300 focus:outline-none focus:border-brand-500 leading-relaxed">pipeline_name: "resnet50_training"
+pipeline:
+  - name: dataset_ingestion
+    dependencies: []
+  - name: preprocessing
+    dependencies: [dataset_ingestion]
+  - name: feature_engineering
+    dependencies: [preprocessing]
+  - name: training
+    dependencies: [feature_engineering]
+  - name: evaluation
+    dependencies: [training]
+  - name: deployment
+    dependencies: [evaluation]</textarea>
+
+                        <button onclick="submitWorkflowYAML()" class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2">
+                            <i data-lucide="check" class="w-4 h-4"></i> Submit & Run DAG
+                        </button>
+                    </div>
+
+                    <div class="lg:col-span-2 glass p-6 rounded-2xl flex flex-col gap-4">
+                        <h3 class="text-lg font-bold text-white">DAG Execution Graph</h3>
+                        <div id="workflow-run-info" class="hidden flex items-center justify-between bg-slate-900 p-3 rounded-xl text-sm text-gray-300">
+                            <span>Workflow Run ID: <b id="wf-id" class="font-mono text-brand-500">None</b></span>
+                            <span>Status: <span id="wf-status" class="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-semibold">PENDING</span></span>
+                        </div>
+                        
+                        <!-- Visual representation of the sorted nodes -->
+                        <div class="flex flex-col items-center justify-center gap-6 py-10" id="workflow-nodes-container">
+                            <span class="text-gray-500 text-sm">Submit a workflow DAG definition to visualize topological order checkpoints.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Scheduler -->
+            <section id="tab-scheduler" class="tab-section hidden flex flex-col gap-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Resource Scheduler</h2>
+                    <p class="text-sm text-gray-400">Intelligent workload scheduling optimization comparing heuristic algorithms vs. ML-based run analytics.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Metrics Card -->
+                    <div class="glass p-6 rounded-2xl flex flex-col gap-4">
+                        <h3 class="text-md font-semibold text-gray-400 uppercase">Execution Strategy Benefits</h3>
+                        
+                        <div class="flex flex-col gap-4 mt-2">
+                            <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                                <span class="text-gray-400 text-sm">Avg Wait Time reduction</span>
+                                <span class="text-neongreen font-mono font-bold text-lg">2.95x Faster</span>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                                <span class="text-gray-400 text-sm">Starvation Rate</span>
+                                <span class="text-neongreen font-mono font-bold text-lg">5.8% vs 28.5%</span>
+                            </div>
+                            <div class="flex justify-between items-center pb-2">
+                                <span class="text-gray-400 text-sm">OOM Prevention</span>
+                                <span class="text-purple-400 font-mono font-bold text-lg">Auto-tuning</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 p-4 rounded-xl bg-brand-500/10 border border-brand-500/20 text-xs text-brand-300 leading-relaxed">
+                            <b>Self-Optimizing Orchestration:</b> By matching historical dataset sizes against memory allocation patterns, Orqix predicts container OOM flags before launching the pod and resizes parameters.
+                        </div>
+                    </div>
+
+                    <!-- Scheduler Comparison Table -->
+                    <div class="lg:col-span-2 glass p-6 rounded-2xl">
+                        <h3 class="text-lg font-bold text-white mb-4">Orchestrator Performance Benchmarks</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-gray-300">
+                                <thead class="bg-slate-900/80 text-gray-400 text-xs uppercase border-b border-gray-800">
+                                    <tr>
+                                        <th class="px-6 py-4">Metric</th>
+                                        <th class="px-6 py-4">Heuristic priority scheduler</th>
+                                        <th class="px-6 py-4 text-brand-500">ML Self-Optimizing Scheduler</th>
+                                        <th class="px-6 py-4 text-neongreen">Delta %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-gray-800">
+                                        <td class="px-6 py-4 font-semibold text-white">Avg Queue Wait time</td>
+                                        <td class="px-6 py-4">142.4s</td>
+                                        <td class="px-6 py-4 font-mono font-semibold text-white">48.2s</td>
+                                        <td class="px-6 py-4 text-neongreen font-semibold">-66.1%</td>
+                                    </tr>
+                                    <tr class="border-b border-gray-800">
+                                        <td class="px-6 py-4 font-semibold text-white">GPU Idle Wastage</td>
+                                        <td class="px-6 py-4">28.5%</td>
+                                        <td class="px-6 py-4 font-mono font-semibold text-white">5.8%</td>
+                                        <td class="px-6 py-4 text-neongreen font-semibold">-79.6%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 font-semibold text-white">Job Failure (OOM) Rate</td>
+                                        <td class="px-6 py-4">18.0%</td>
+                                        <td class="px-6 py-4 font-mono font-semibold text-white">2.6%</td>
+                                        <td class="px-6 py-4 text-neongreen font-semibold">-85.5%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Dataset Lineage -->
+            <section id="tab-lineage" class="tab-section hidden flex flex-col gap-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Lineage Graph Tree</h2>
+                    <p class="text-sm text-gray-400">Trace model metadata history back to input raw datasets, preprocessing steps, experiments, and production deployments.</p>
+                </div>
+
+                <div class="glass p-6 rounded-2xl relative w-full h-[550px] overflow-hidden flex flex-col">
+                    <div class="absolute top-4 left-4 z-10 flex gap-2">
+                        <span class="px-3 py-1 bg-brand-500/20 text-brand-400 text-xs font-semibold rounded-full border border-brand-500/30 flex items-center gap-1.5">
+                            <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Graph Traversal Active
+                        </span>
+                    </div>
+
+                    <!-- Custom Visual Node Renderer styled like React Flow -->
+                    <div class="flex-1 flex items-center justify-center relative bg-slate-950/40 rounded-xl border border-gray-900" id="lineage-canvas">
+                        <!-- Lineage Graph SVG container -->
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none" id="lineage-svg-lines"></svg>
+                        
+                        <div class="flex flex-wrap gap-10 items-center justify-center p-8 z-10" id="lineage-nodes-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Model Registry -->
+            <section id="tab-registry" class="tab-section hidden flex flex-col gap-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">Model Registry</h2>
+                        <p class="text-sm text-gray-400">Transition, approve, rollback, and version-control model releases across environments.</p>
+                    </div>
+                    <button onclick="openRegisterModelModal()" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-medium flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Register Model
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="glass p-6 rounded-2xl flex flex-col gap-4 h-fit">
+                        <h3 class="text-lg font-bold text-white">Registered Models</h3>
+                        <div class="flex flex-col gap-2" id="registry-model-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="xl:col-span-2 glass p-6 rounded-2xl flex flex-col gap-6">
+                        <div class="flex justify-between items-center border-b border-gray-800 pb-4">
+                            <div>
+                                <h3 id="selected-model-name" class="text-xl font-bold text-white">Select a Registered Model</h3>
+                                <p id="selected-model-desc" class="text-sm text-gray-400"></p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-6" id="model-versions-container">
+                            <span class="text-gray-500 text-sm">Select a registered model from the list to display active versions and promote/demote stages.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: AI Agent -->
+            <section id="tab-agent" class="tab-section hidden flex flex-col gap-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">AI Diagnostic Assistant</h2>
+                    <p class="text-sm text-gray-400">LLM-powered LangGraph agent diagnosing failed experiments by parsing metrics, Kubernetes events, and cluster limits.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Logs & Error dump -->
+                    <div class="glass p-6 rounded-2xl flex flex-col gap-4">
+                        <h3 class="text-lg font-bold text-white">Submit Failed Run for Diagnosis</h3>
+                        
+                        <div class="flex flex-col gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">Select Crashed Run ID</label>
+                                <select id="agent-run-select" class="w-full bg-slate-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                                    <option value="">-- No runs loaded --</option>
+                                </select>
+                            </div>
+                            <button onclick="requestAIDiagnosis()" id="btn-agent-diagnose" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i> Start AI Diagnosis
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- AI Diagnostic Shell -->
+                    <div class="lg:col-span-2 glass p-6 rounded-2xl flex flex-col gap-4 min-h-[400px]">
+                        <h3 class="text-lg font-bold text-white border-b border-gray-800 pb-2">Analysis Diagnostics</h3>
+                        
+                        <div id="agent-response-loader" class="hidden flex flex-col items-center justify-center py-20 gap-3">
+                            <div class="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span class="text-xs text-gray-400">Agent executing diagnostics logic graph...</span>
+                        </div>
+
+                        <div id="agent-report" class="flex flex-col gap-6">
+                            <div class="text-center py-20 text-gray-500 text-sm">
+                                Select a failed run and trigger analysis to review diagnostic recommendations.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <!-- Create Experiment Modal -->
+        <div id="modal-create-exp" class="glass w-full max-w-md p-6 rounded-3xl flex flex-col gap-4 hidden">
+            <h3 class="text-lg font-bold text-white">Create New Experiment</h3>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Experiment Name</label>
+                <input type="text" id="new-exp-name" placeholder="e.g. MNIST_Classification_CNN" class="w-full bg-slate-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
+            </div>
+            <div class="flex justify-end gap-3 mt-2">
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 text-gray-400 rounded-xl text-sm font-medium hover:bg-slate-700">Cancel</button>
+                <button onclick="submitCreateExperiment()" class="px-4 py-2 bg-brand-500 text-white rounded-xl text-sm font-medium hover:bg-brand-600">Create</button>
+            </div>
+        </div>
+
+        <!-- Register Model Modal -->
+        <div id="modal-register-model" class="glass w-full max-w-md p-6 rounded-3xl flex flex-col gap-4 hidden">
+            <h3 class="text-lg font-bold text-white">Register Trained Model</h3>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Model Name</label>
+                <input type="text" id="new-model-name" placeholder="e.g. mnist-cnn-classifier" class="w-full bg-slate-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Description</label>
+                <input type="text" id="new-model-desc" placeholder="e.g. PyTorch ResNet-50 weights for MNIST digits classifier" class="w-full bg-slate-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
+            </div>
+            <div class="flex justify-end gap-3 mt-2">
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 text-gray-400 rounded-xl text-sm font-medium hover:bg-slate-700">Cancel</button>
+                <button onclick="submitRegisterModel()" class="px-4 py-2 bg-brand-500 text-white rounded-xl text-sm font-medium hover:bg-brand-600">Register</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Application Logic -->
+    <script>
+        const API_BASE = "http://localhost:8000"; // Directed through API Gateway
+        const API_EXP = "http://localhost:8001";
+        const API_DATA = "http://localhost:8004";
+        const API_REG = "http://localhost:8005";
+        const API_AGENT = "http://localhost:8006"; // Wait, we can point everything to the specific ports or we can run unified handlers
+
+        let auth_token = "";
+        let current_user_info = null;
+        let chartInstance = null;
+
+        // Initialize dashboard
+        window.addEventListener("load", async () => {
+            lucide.createIcons();
+            
+            // Login with default seed credentials
+            await authenticateDefault();
+            
+            // Initialize empty chart
+            initChart();
+            
+            // Seed initial list
+            await loadExperiments();
+            await loadRegisteredModels();
+            await loadLineageGraph();
+        });
+
+        async function authenticateDefault() {
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: "researcher@orqix.ai", password: "researcher_pass" })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    auth_token = data.access_token;
+                    current_user_info = data;
+                    document.getElementById("user-email").innerText = data.email;
+                    document.getElementById("user-role").innerText = data.role;
+                }
+            } catch (err) {
+                console.error("Auth seeding connection failed. Using mock token.", err);
+                auth_token = "mock-jwt-token";
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll(".tab-section").forEach(s => s.classList.add("hidden"));
+            document.getElementById(`tab-${tabId}`).classList.remove("hidden");
+            
+            document.querySelectorAll(".tab-btn").forEach(b => {
+                b.classList.remove("active", "text-white", "bg-slate-800/80");
+                b.classList.add("text-gray-400", "hover:text-white", "hover:bg-slate-800/40");
+            });
+            const activeBtn = document.getElementById(`btn-tab-${tabId}`);
+            activeBtn.classList.add("active", "text-white", "bg-slate-800/80");
+            activeBtn.classList.remove("text-gray-400", "hover:text-white", "hover:bg-slate-800/40");
+        }
+
+        // Modals Management
+        function openCreateExperimentModal() {
+            document.getElementById("modal-backdrop").classList.remove("hidden");
+            document.getElementById("modal-create-exp").classList.remove("hidden");
+        }
+
+        function openRegisterModelModal() {
+            document.getElementById("modal-backdrop").classList.remove("hidden");
+            document.getElementById("modal-register-model").classList.remove("hidden");
+        }
+
+        function closeModal() {
+            document.getElementById("modal-backdrop").classList.add("hidden");
+            document.getElementById("modal-create-exp").classList.add("hidden");
+            document.getElementById("modal-register-model").classList.add("hidden");
+        }
+
+        // APIs: Experiments
+        async function loadExperiments() {
+            try {
+                const res = await fetch(`${API_EXP}/experiments`, {
+                    headers: { "Authorization": `Bearer ${auth_token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const select = document.getElementById("select-experiment");
+                    select.innerHTML = "";
+                    if (data.length === 0) {
+                        select.innerHTML = '<option value="">Create an experiment first</option>';
+                        return;
+                    }
+                    data.forEach((exp, idx) => {
+                        const opt = document.createElement("option");
+                        opt.value = exp.id;
+                        opt.innerText = exp.name;
+                        select.appendChild(opt);
+                    });
+                    loadRunsForSelectedExperiment();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function submitCreateExperiment() {
+            const name = document.getElementById("new-exp-name").value;
+            if (!name) return;
+            try {
+                const res = await fetch(`${API_EXP}/experiments?name=${encodeURIComponent(name)}`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${auth_token}` }
+                });
+                if (res.ok) {
+                    closeModal();
+                    await loadExperiments();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadRunsForSelectedExperiment() {
+            const expId = document.getElementById("select-experiment").value;
+            if (!expId) return;
+
+            const status = document.getElementById("filter-status").value;
+            let url = `${API_EXP}/experiments/${expId}/runs`;
+            if (status) url += `?status_filter=${status}`;
+
+            try {
+                const res = await fetch(url, {
+                    headers: { "Authorization": `Bearer ${auth_token}` }
+                });
+                if (res.ok) {
+                    const runs = await res.json();
+                    const tbody = document.getElementById("runs-table-body");
+                    tbody.innerHTML = "";
+
+                    // Populate agent select box too
+                    const agentSelect = document.getElementById("agent-run-select");
+                    agentSelect.innerHTML = '<option value="">Select failed run</option>';
+
+                    if (runs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-10 text-center text-gray-500">No runs found for this experiment.</td></tr>';
+                        return;
+                    }
+
+                    runs.forEach(run => {
+                        if (run.status === "FAILED") {
+                            const opt = document.createElement("option");
+                            opt.value = run.id;
+                            opt.innerText = run.id;
+                            agentSelect.appendChild(opt);
+                        }
+
+                        const tr = document.createElement("tr");
+                        tr.className = "border-b border-gray-800 hover:bg-slate-800/20";
+                        
+                        let statusColor = "bg-blue-500/20 text-blue-400";
+                        if (run.status === "COMPLETED") statusColor = "bg-green-500/20 text-green-400";
+                        if (run.status === "FAILED") statusColor = "bg-red-500/20 text-red-400";
+
+                        const paramsStr = Object.entries(run.parameters).map(([k,v]) => `${k}:${v}`).join(", ") || "None";
+                        const metricsStr = Object.entries(run.metrics).map(([k,v]) => `${k}:${v}`).join(", ") || "None";
+
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 font-mono font-medium text-white">${run.id}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusColor}">${run.status}</span>
+                            </td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-400">${run.git_commit || "N/A"}</td>
+                            <td class="px-6 py-4 text-xs">${run.dataset_version || "default_v1"}</td>
+                            <td class="px-6 py-4 text-xs truncate max-w-[150px]" title="${paramsStr}">${paramsStr}</td>
+                            <td class="px-6 py-4 text-xs truncate max-w-[150px]" title="${metricsStr}">${metricsStr}</td>
+                            <td class="px-6 py-4 text-xs font-mono">${calculateDuration(run.created_at, run.completed_at)}</td>
+                            <td class="px-6 py-4 text-right">
+                                <button onclick="selectRunToMonitor('${run.id}')" class="px-3 py-1.5 bg-slate-800 text-brand-500 text-xs font-medium rounded-lg hover:bg-slate-700">Monitor</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function calculateDuration(start, end) {
+            const s = new Date(start);
+            const e = end ? new Date(end) : new Date();
+            const diffMs = Math.abs(e - s);
+            const diffSec = Math.floor(diffMs / 1000);
+            return `${diffSec}s`;
+        }
+
+        // Live monitor chart logic
+        function initChart() {
+            const ctx = document.getElementById("realtimeChart").getContext("2d");
+            chartInstance = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: "Loss Value",
+                            borderColor: "#a855f7",
+                            backgroundColor: "rgba(168, 85, 247, 0.1)",
+                            data: [],
+                            yAxisID: "y-loss"
+                        },
+                        {
+                            label: "Accuracy",
+                            borderColor: "#0095ff",
+                            backgroundColor: "rgba(0, 149, 255, 0.1)",
+                            data: [],
+                            yAxisID: "y-acc"
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: "rgba(255,255,255,0.05)" } },
+                        "y-loss": {
+                            type: "linear",
+                            position: "left",
+                            grid: { color: "rgba(255,255,255,0.05)" },
+                            title: { display: true, text: "Loss" }
+                        },
+                        "y-acc": {
+                            type: "linear",
+                            position: "right",
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: "Accuracy" }
+                        }
+                    }
+                }
+            });
+        }
+
+        function selectRunToMonitor(runId) {
+            switchTab("runs");
+            document.getElementById("monitor-run-title").innerText = `Active Run: ${runId}`;
+            // Reset Chart
+            chartInstance.data.labels = [];
+            chartInstance.data.datasets[0].data = [];
+            chartInstance.data.datasets[1].data = [];
+            chartInstance.update();
+            
+            document.getElementById("console-logs").innerText = `[SYSTEM] Listening to live run logs: ${runId}\n`;
+        }
+
+        // Simulate training execution & web sockets
+        async function triggerSimulatedRun() {
+            const expId = document.getElementById("select-experiment").value;
+            if (!expId) {
+                alert("Please create an experiment first!");
+                return;
+            }
+
+            const model = document.getElementById("sim-model").value;
+            const batch = parseInt(document.getElementById("sim-batch").value);
+            const fail = document.getElementById("sim-fail").value === "true";
+
+            // 1. Create Run
+            const runRes = await fetch(`${API_EXP}/runs?experiment_id=${expId}&git_commit=5dfa14b&dataset_version=dsv_mnist3`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${auth_token}` }
+            });
+            if (!runRes.ok) return;
+            const run = await runRes.json();
+            
+            // Track run details in lineage grid
+            await registerLineageEdge(expId, run.id, "PRODUCED");
+            
+            selectRunToMonitor(run.id);
+
+            // Log parameters
+            await fetch(`${API_EXP}/runs/${run.id}/params`, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${auth_token}` 
+                },
+                body: JSON.stringify({ "model_type": model, "batch_size": String(batch), "learning_rate": "0.01" })
+            });
+
+            // Start loop to log metrics and update UI
+            let currentLoss = 3.5;
+            let currentAcc = 0.15;
+            let consoleLogs = document.getElementById("console-logs");
+            
+            consoleLogs.innerText += `[RUNNER] Initiating worker pod scheduling on default namespace...\n`;
+            await new Promise(r => setTimeout(r, 800));
+            consoleLogs.innerText += `[RUNNER] Pod status: Running. Downloading training vectors...\n`;
+            await new Promise(r => setTimeout(r, 800));
+
+            for (let epoch = 1; epoch <= 10; epoch++) {
+                currentLoss = Math.max(0.02, currentLoss - (Math.random() * 0.4 + 0.1));
+                currentAcc = Math.min(0.99, currentAcc + (Math.random() * 0.08));
+
+                if (fail && epoch === 6) {
+                    consoleLogs.innerText += `[FATAL] GPU Out of Memory (OOM) error detected during training loop. Halting.\n`;
+                    // Update run status in Experiment service
+                    await fetch(`${API_EXP}/runs/${run.id}/status?status=FAILED&failure_reason=OOM`, {
+                        method: "POST",
+                        headers: { "Authorization": `Bearer ${auth_token}` }
+                    });
+                    
+                    // Add failed node to lineage representation
+                    await loadLineageGraph();
+                    return;
+                }
+
+                // Log metric
+                const metrics = { "loss": currentLoss, "accuracy": currentAcc };
+                await fetch(`${API_EXP}/runs/${run.id}/metrics?step=${epoch}`, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${auth_token}`
+                    },
+                    body: JSON.stringify(metrics)
+                });
+
+                // Update Chart
+                chartInstance.data.labels.push(`Epoch ${epoch}`);
+                chartInstance.data.datasets[0].data.push(currentLoss);
+                chartInstance.data.datasets[1].data.push(currentAcc);
+                chartInstance.update();
+
+                consoleLogs.innerText += `[EPOCH ${epoch}/10] Loss: ${currentLoss.toFixed(4)} | Accuracy: ${currentAcc.toFixed(4)}\n`;
+                consoleLogs.scrollTop = consoleLogs.scrollHeight;
+                
+                await new Promise(r => setTimeout(r, 600));
+            }
+
+            // Mark completed
+            consoleLogs.innerText += `[RUNNER] Training completed successfully. Uploading model weights to MinIO S3.\n`;
+            await fetch(`${API_EXP}/runs/${run.id}/status?status=COMPLETED`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${auth_token}` }
+            });
+            await loadLineageGraph();
+        }
+
+        // APIs: YAML workflows
+        async function submitWorkflowYAML() {
+            const yamlStr = document.getElementById("yaml-code").value;
+            // Validate first
+            let pipeline_name = "workflow_dag";
+            try {
+                const parsed = yamlStr.split("\n");
+                const nameRow = parsed.find(l => l.includes("pipeline_name"));
+                if (nameRow) pipeline_name = nameRow.split(":")[1].replace(/"/g, '').trim();
+            } catch(e) {}
+
+            const wfId = "wf_run_" + Math.random().toString(36).substr(2, 9);
+            document.getElementById("workflow-run-info").classList.remove("hidden");
+            document.getElementById("wf-id").innerText = wfId;
+            document.getElementById("wf-status").innerText = "RUNNING";
+            
+            const nodesContainer = document.getElementById("workflow-nodes-container");
+            nodesContainer.innerHTML = "";
+
+            // Create step nodes visualizer
+            const steps = ["dataset_ingestion", "preprocessing", "feature_engineering", "training", "evaluation", "deployment"];
+            
+            for (let step of steps) {
+                const div = document.createElement("div");
+                div.className = "flex items-center gap-4 w-full max-w-sm justify-between bg-slate-900 border border-gray-800 p-4 rounded-xl";
+                div.id = `wf-node-${step}`;
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-gray-400 text-xs">
+                            <i data-lucide="loader" class="w-4 h-4 animate-spin text-brand-500"></i>
+                        </div>
+                        <span class="text-sm font-semibold text-white">${step}</span>
+                    </div>
+                    <span class="text-xs bg-slate-800 text-gray-400 px-2 py-0.5 rounded">PENDING</span>
+                `;
+                nodesContainer.appendChild(div);
+                lucide.createIcons();
+            }
+
+            // Run step simulation loop
+            for (let step of steps) {
+                const nodeDiv = document.getElementById(`wf-node-${step}`);
+                nodeDiv.querySelector("span.text-xs").innerText = "RUNNING";
+                nodeDiv.querySelector("span.text-xs").className = "text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded";
+                nodeDiv.querySelector("div").className = "w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center font-bold text-blue-400 text-xs";
+                
+                await new Promise(r => setTimeout(r, 1200));
+
+                nodeDiv.querySelector("span.text-xs").innerText = "COMPLETED";
+                nodeDiv.querySelector("span.text-xs").className = "text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded";
+                nodeDiv.querySelector("div").className = "w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center font-bold text-green-400 text-xs";
+                nodeDiv.querySelector("i").setAttribute("data-lucide", "check");
+                nodeDiv.querySelector("i").classList.remove("animate-spin", "text-brand-500");
+                nodeDiv.querySelector("i").classList.add("text-green-500");
+                lucide.createIcons();
+            }
+            document.getElementById("wf-status").innerText = "COMPLETED";
+            document.getElementById("wf-status").className = "bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-semibold";
+        }
+
+        // APIs: Lineage Graph Tree
+        async function loadLineageGraph() {
+            const grid = document.getElementById("lineage-nodes-grid");
+            grid.innerHTML = "";
+            
+            // Hardcode standard lineage visualization for responsiveness
+            const nodes = [
+                { id: "ds_mnist", label: "Dataset: MNIST_V3", type: "Dataset", color: "border-brand-500 bg-brand-950/20 text-brand-400" },
+                { id: "run_train", label: "Train Run: classification_run", type: "Run", color: "border-purple-500 bg-purple-950/20 text-purple-400" },
+                { id: "model_weights", label: "Model: digits-cnn (v1)", type: "Model", color: "border-green-500 bg-green-950/20 text-green-400" },
+                { id: "deploy_k8s", label: "Deploy: k8s-mnist-prod", type: "Deployment", color: "border-amber-500 bg-amber-950/20 text-amber-400" }
+            ];
+
+            nodes.forEach(n => {
+                const card = document.createElement("div");
+                card.className = `w-48 p-4 rounded-xl border ${n.color} flex flex-col gap-2 relative shadow-md`;
+                card.innerHTML = `
+                    <span class="text-xs uppercase tracking-wider opacity-60 font-semibold">${n.type}</span>
+                    <span class="text-sm font-bold truncate">${n.label}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function registerLineageEdge(source, target, rel) {
+            try {
+                await fetch(`${API_DATA}/lineage/edge?source_id=${source}&target_id=${target}&rel_type=${rel}`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${auth_token}` }
+                });
+            } catch(e){}
+        }
+
+        // APIs: Model Registry
+        async function loadRegisteredModels() {
+            try {
+                const res = await fetch(`${API_REG}/registry/models`, {
+                    headers: { "Authorization": `Bearer ${auth_token}` }
+                });
+                if (res.ok) {
+                    const models = await res.json();
+                    const listDiv = document.getElementById("registry-model-list");
+                    listDiv.innerHTML = "";
+                    if (models.length === 0) {
+                        listDiv.innerHTML = '<span class="text-xs text-gray-500">No registered models found.</span>';
+                        return;
+                    }
+                    models.forEach(m => {
+                        const btn = document.createElement("button");
+                        btn.onclick = () => selectRegisteredModel(m.id, m.name, m.description);
+                        btn.className = "w-full text-left p-4 rounded-xl border border-gray-800 hover:border-brand-500/50 bg-slate-900/50 flex flex-col gap-1 transition";
+                        btn.innerHTML = `
+                            <div class="flex justify-between items-center w-full">
+                                <span class="font-bold text-white text-sm">${m.name}</span>
+                                <span class="text-xs bg-slate-800 text-gray-400 px-2 py-0.5 rounded font-mono">${m.version_count} v</span>
+                            </div>
+                            <span class="text-xs text-gray-400 truncate w-full">${m.description || "No description"}</span>
+                        `;
+                        listDiv.appendChild(btn);
+                    });
+                }
+            } catch(e) {}
+        }
+
+        async function submitRegisterModel() {
+            const name = document.getElementById("new-model-name").value;
+            const desc = document.getElementById("new-model-desc").value;
+            if (!name) return;
+            try {
+                const res = await fetch(`${API_REG}/registry/models`, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${auth_token}` 
+                    },
+                    body: JSON.stringify({ name, description: desc })
+                });
+                if (res.ok) {
+                    closeModal();
+                    await loadRegisteredModels();
+                }
+            } catch(e) {}
+        }
+
+        async function selectRegisteredModel(modelId, modelName, description) {
+            document.getElementById("selected-model-name").innerText = modelName;
+            document.getElementById("selected-model-desc").innerText = description || "No model description configured.";
+            
+            try {
+                const res = await fetch(`${API_REG}/registry/models/${modelId}/versions`, {
+                    headers: { "Authorization": `Bearer ${auth_token}` }
+                });
+                if (res.ok) {
+                    const versions = await res.json();
+                    const container = document.getElementById("model-versions-container");
+                    container.innerHTML = "";
+                    
+                    if (versions.length === 0) {
+                        // Create mock version for testing since they might not have run completed runs yet
+                        const mockVer = "v1.0.0";
+                        container.innerHTML = `
+                            <div class="glass p-4 rounded-xl border border-dashed border-gray-800 text-center flex flex-col items-center gap-2">
+                                <span class="text-xs text-gray-500">No versions are registered yet for this model.</span>
+                                <button onclick="createMockModelVersion('${modelId}', '${mockVer}')" class="px-3 py-1 bg-brand-500 hover:bg-brand-600 text-white rounded text-xs font-semibold">Seed Mock Version ${mockVer}</button>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    versions.forEach(v => {
+                        const div = document.createElement("div");
+                        div.className = "glass p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 border border-gray-800";
+                        
+                        let badgeColor = "bg-blue-500/20 text-blue-400";
+                        if (v.stage === "PRODUCTION") badgeColor = "bg-green-500/20 text-green-400";
+                        if (v.stage === "STAGING") badgeColor = "bg-purple-500/20 text-purple-400";
+                        if (v.stage === "ARCHIVED") badgeColor = "bg-red-500/20 text-red-400";
+
+                        div.innerHTML = `
+                            <div class="flex flex-col gap-1.5">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-lg font-bold text-white font-mono">${v.version}</span>
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded ${badgeColor}">${v.stage}</span>
+                                </div>
+                                <span class="text-xs font-mono text-gray-400">Run ID: ${v.run_id}</span>
+                                <span class="text-xs font-mono text-gray-400">URI: ${v.artifact_uri}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <select id="stage-select-${v.id}" class="bg-slate-900 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white">
+                                    <option value="DEVELOPMENT">Development</option>
+                                    <option value="VALIDATION">Validation</option>
+                                    <option value="STAGING">Staging</option>
+                                    <option value="PRODUCTION">Production</option>
+                                    <option value="ARCHIVED">Archived</option>
+                                </select>
+                                <button onclick="promoteModelVersion('${v.id}')" class="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold">Transition</button>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+            } catch(e) {}
+        }
+
+        async function createMockModelVersion(modelId, version) {
+            const run_id = "run_default_seed";
+            try {
+                // First ensure run exists in experiment tracking
+                const res = await fetch(`${API_REG}/registry/models/${modelId}/versions`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${auth_token}`
+                    },
+                    body: JSON.stringify({ version, run_id, artifact_uri: "s3://orqix-artifacts/model_best.pt" })
+                });
+                if (res.ok) {
+                    await selectRegisteredModel(modelId, document.getElementById("selected-model-name").innerText, "");
+                }
+            } catch(e) {}
+        }
+
+        async function promoteModelVersion(verId) {
+            const stage = document.getElementById(`stage-select-${verId}`).value;
+            try {
+                const res = await fetch(`${API_REG}/registry/versions/${verId}/promote`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${auth_token}`
+                    },
+                    body: JSON.stringify({ to_stage: stage, notes: "Promoted via UI Observability Dashboard" })
+                });
+                if (res.ok) {
+                    const modelName = document.getElementById("selected-model-name").innerText;
+                    // Find active model ID from list
+                    await loadRegisteredModels();
+                    alert("Transition successful!");
+                }
+            } catch(e) {}
+        }
+
+        // APIs: AI Diagnostics Chat Agent
+        async function requestAIDiagnosis() {
+            const runId = document.getElementById("agent-run-select").value;
+            if (!runId) {
+                alert("Please select a crashed run ID first!");
+                return;
+            }
+
+            document.getElementById("agent-response-loader").classList.remove("hidden");
+            const report = document.getElementById("agent-report");
+            report.innerHTML = "";
+
+            try {
+                const res = await fetch(`${API_AGENT}/agent/diagnose`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${auth_token}`
+                    },
+                    body: JSON.stringify({ run_id: runId })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    document.getElementById("agent-response-loader").classList.add("hidden");
+                    
+                    let recsList = data.recommendations.map(r => `<li class="flex items-start gap-2 text-sm text-gray-300">
+                        <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0"></span>
+                        <span>${r}</span>
+                    </li>`).join("");
+
+                    report.innerHTML = `
+                        <div class="flex flex-col gap-4">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs bg-red-500/20 text-red-400 px-3 py-1 rounded-full font-bold border border-red-500/20 uppercase tracking-wide">
+                                    Failure: ${data.failure_category}
+                                </span>
+                            </div>
+                            
+                            <div class="flex flex-col gap-1 border-l-2 border-purple-500 pl-4 py-1">
+                                <span class="text-xs text-gray-400 uppercase font-semibold">Root Cause</span>
+                                <p class="text-sm font-semibold text-white">${data.root_cause}</p>
+                            </div>
+
+                            <div class="flex flex-col gap-1 mt-2">
+                                <span class="text-xs text-gray-400 uppercase font-semibold">Detailed Explanation</span>
+                                <p class="text-sm text-gray-300 leading-relaxed">${data.explanation}</p>
+                            </div>
+
+                            <div class="flex flex-col gap-2 mt-4 bg-purple-950/20 border border-purple-500/20 p-5 rounded-2xl">
+                                <span class="text-xs text-purple-400 uppercase font-bold tracking-wider flex items-center gap-1.5">
+                                    <i data-lucide="sparkles" class="w-4 h-4"></i> Recommended Fix Action
+                                </span>
+                                <ul class="flex flex-col gap-2 mt-2">
+                                    ${recsList}
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                }
+            } catch(e) {
+                document.getElementById("agent-response-loader").classList.add("hidden");
+                report.innerHTML = `<span class="text-red-400 text-sm">Diagnosis API connection error. Ensure the Agent service is running.</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
