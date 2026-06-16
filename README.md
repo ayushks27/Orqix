@@ -297,6 +297,3 @@ See the LICENSE file for complete details.
 
 ### Purnendu Raghav Srivastava
 
----
-
-⭐ If you find Orqix useful, consider starring the repository.
