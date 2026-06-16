@@ -1,10 +1,6 @@
 # Orqix
 
 <p align="center">
-  <img src="docs/assets/orqix-banner.png" alt="Orqix Banner" width="100%">
-</p>
-
-<p align="center">
   <strong>Distributed ML Experiment & Control Plane</strong>
 </p>
 
