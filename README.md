@@ -281,8 +281,6 @@ Password: admin_pass
 
 ## License
 
-MIT License
-
 Copyright (c) 2026
 
 Purnendu Raghav Srivastava
