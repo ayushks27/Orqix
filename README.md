@@ -1,104 +1,306 @@
-# Orqix: Distributed ML Experiment & Control Plane
+# Orqix
 
-Orqix is an AI-native, distributed machine learning experiment tracking, workflow scheduling, and model management platform. It features a microservices control plane built with FastAPI and a modern monochrome frontend cockpit built with Next.js, React Flow, and ChartJS.
+<p align="center">
+  <img src="docs/assets/orqix-banner.png" alt="Orqix Banner" width="100%">
+</p>
 
----
+<p align="center">
+  <strong>Distributed ML Experiment & Control Plane</strong>
+</p>
 
-## Architecture Overview
+<p align="center">
+  AI-native platform for experiment tracking, workflow orchestration, lineage management, model lifecycle governance, and intelligent infrastructure scheduling.
+</p>
 
-Orqix operates as a set of distributed Python microservices coupled with database and telemetry infrastructure:
-
-### Backend Services
-* **Gateway & Auth Service (Port `8000`)**: Authenticates users (JWT) and coordinates platform access controls. Includes health auditing.
-* **Experiment Service (Port `8001`)**: Tracks experiments, runs, hyperparameters, and custom telemetry metrics. Includes websocket streams.
-* **Workflow Service (Port `8002`)**: Coordinates execution of DAG pipelines across cluster workers.
-* **Scheduler Service (Port `8003`)**: A dynamic, self-optimizing resources orchestrator that runs predictive OOM checks.
-* **Dataset Service (Port `8004`)**: Manages dataset registrations, versioning, and object store uploads.
-* **Registry Service (Port `8005`)**: Manages model version promotion lifecycle states (`DEV`, `STAGING`, `PRODUCTION`).
-* **Agent Service (Port `8006`)**: An AI diagnostic failure agent that scans execution traces and recommends resolutions.
-
-### Infrastructure (Docker Compose)
-* **PostgreSQL (Port `5432`)**: Relational storage for experiments, runs, and metadata.
-* **Redis (Port `6379`)**: Real-time event broker cache and pub-sub fallback.
-* **Redpanda Kafka (Port `9092`)**: High-throughput distributed event streaming.
-* **MinIO S3 (Ports `9000`/`9001`)**: Object storage for datasets and model checkpoints.
-* **Neo4j (Ports `7474`/`7687`)**: Graph database tracking lineage graphs.
-* **Prometheus (Port `9090`)**: Telemetry metrics collector.
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-green.svg">
+  <img src="https://img.shields.io/badge/python-3.10+-blue.svg">
+  <img src="https://img.shields.io/badge/fastapi-microservices-green.svg">
+  <img src="https://img.shields.io/badge/nextjs-dashboard-black.svg">
+  <img src="https://img.shields.io/badge/kafka-event--driven-orange.svg">
+  <img src="https://img.shields.io/badge/docker-ready-blue.svg">
+</p>
 
 ---
 
-## Prerequisites
+## Overview
 
-Before starting, ensure you have installed:
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/) (select **AMD64 / x86_64** version)
-* [Python 3.10+](https://www.python.org/)
-* [Node.js 18+](https://nodejs.org/)
+Orqix is a distributed Machine Learning Experiment Control Plane designed for modern MLOps environments.
+
+The platform combines:
+
+* Experiment Tracking
+* Workflow Orchestration
+* Dataset Versioning
+* Lineage Management
+* Model Registry
+* Event-Driven Architecture
+* AI Failure Diagnostics
+* Resource Optimization
+
+into a unified control plane built for scalable ML operations.
+
+Unlike traditional experiment trackers, Orqix introduces a self-optimizing scheduler capable of predicting execution bottlenecks, identifying resource constraints, and assisting researchers through AI-driven diagnostics.
 
 ---
 
-## Quick Start Guide
+## Key Features
 
-Follow these steps to run the complete Orqix stack locally:
+### Experiment Tracking
 
-### Step 1: Start Infrastructure Containers
-Launch the database, storage, and message queue containers in detached mode:
+* Experiment lifecycle management
+* Run comparison
+* Hyperparameter logging
+* Metrics tracking
+* Artifact association
+* Real-time telemetry streams
+
+### Workflow Orchestration
+
+* DAG-based execution engine
+* Dependency resolution
+* Retry policies
+* Parallel execution
+* Workflow monitoring
+
+### Dataset Management
+
+* Dataset registration
+* Version control
+* Metadata tracking
+* Object storage integration
+* Dataset lineage visualization
+
+### Model Registry
+
+* Version management
+* Stage promotion workflows
+* Deployment history
+* Rollback support
+
+### Intelligent Scheduling
+
+* Predictive OOM detection
+* Resource utilization forecasting
+* Dynamic workload balancing
+* Self-optimizing execution strategies
+
+### AI Diagnostic Agent
+
+* Failure analysis
+* Root cause detection
+* Infrastructure recommendations
+* Experiment optimization insights
+
+### Observability
+
+* Prometheus metrics
+* Live dashboards
+* Cluster telemetry
+* Event tracing
+
+---
+
+## Architecture
+
+```text
+                     ┌─────────────────┐
+                     │    Frontend     │
+                     │     Next.js     │
+                     └────────┬────────┘
+                              │
+                              ▼
+                  ┌─────────────────────┐
+                  │ Gateway & Auth API  │
+                  └─────────┬───────────┘
+                            │
+ ┌──────────────┬───────────┼───────────┬──────────────┐
+ ▼              ▼           ▼           ▼              ▼
+
+Experiment   Workflow   Scheduler   Dataset     Registry
+ Service      Service    Service     Service      Service
+
+ └──────────────┬─────────────┬──────────────┬──────────┘
+                ▼             ▼              ▼
+
+           PostgreSQL     Kafka       Neo4j Graph
+
+                ▼             ▼              ▼
+
+              Redis      MinIO S3      Prometheus
+
+                              ▼
+
+                        Agent Service
+```
+
+---
+
+## Microservices
+
+| Service        | Port | Responsibility                |
+| -------------- | ---- | ----------------------------- |
+| Gateway & Auth | 8000 | Authentication, Authorization |
+| Experiment     | 8001 | Experiments & Runs            |
+| Workflow       | 8002 | DAG Execution                 |
+| Scheduler      | 8003 | Resource Allocation           |
+| Dataset        | 8004 | Dataset Versioning            |
+| Registry       | 8005 | Model Registry                |
+| Agent          | 8006 | AI Diagnostics                |
+
+---
+
+## Infrastructure Stack
+
+| Component      | Purpose          |
+| -------------- | ---------------- |
+| PostgreSQL     | Metadata Store   |
+| Redis          | Cache & Pub/Sub  |
+| Redpanda Kafka | Event Streaming  |
+| MinIO          | Object Storage   |
+| Neo4j          | Lineage Graph    |
+| Prometheus     | Monitoring       |
+| Docker         | Containerization |
+
+---
+
+## Quick Start
+
+### 1. Start Infrastructure
+
 ```bash
 docker compose up -d
 ```
-*(Requires Docker Desktop to be running. If Kafka/Redis are not active, the backend automatically uses SQLite/Redis fallback mechanisms so you can still test.)*
 
-### Step 2: Configure Python Virtual Environment
-Navigate to the root directory and install dependencies:
+### 2. Create Virtual Environment
 
-**On Windows (PowerShell)**:
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-**On macOS / Linux**:
 ```bash
-python3 -m venv venv
+python -m venv venv
+```
+
+Windows:
+
+```bash
+.\venv\Scripts\Activate.ps1
+```
+
+Linux/macOS:
+
+```bash
 source venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
 ```
 
-### Step 3: Launch Backend Control Plane
-Run the services manager script. This initializes database schemas and seeds default researcher credentials, then spins up the 7 microservices:
+### 3. Launch Backend
+
 ```bash
 python start_services.py
 ```
-*(Keep this terminal window open)*
 
-### Step 4: Run Frontend Development Cockpit
-Open a new terminal window, navigate to the `frontend` directory, and start the Next.js development server:
+### 4. Launch Frontend
+
 ```bash
 cd frontend
+
+npm install
+
 npm run dev
 ```
-*(Keep this terminal window open)*
 
-Once compiled, navigate in your browser to:
-* **Dashboard App**: `http://localhost:3000`
+Open:
+
+```text
+http://localhost:3000
+```
 
 ---
 
-## Verification & Testing
+## Platform Verification
 
-To run the end-to-end platform verification flow (authenticating, submitting experiments, predicting OOM, tracking runs, registering models, and completing promotions):
+Execute a complete end-to-end validation workflow:
+
 ```bash
-# In a terminal with venv active:
 python verify_platform.py
 ```
+
+This verifies:
+
+* Authentication
+* Experiment Creation
+* Run Tracking
+* OOM Prediction
+* Dataset Registration
+* Model Promotion
+* Agent Diagnostics
 
 ---
 
 ## Default Credentials
-Seeded automatically during database startup:
-* **Role**: Researcher
-  * **Email**: `researcher@orqix.ai`
-  * **Password**: `researcher_pass`
-* **Role**: Admin
-  * **Email**: `admin@orqix.ai`
-  * **Password**: `admin_pass`
+
+### Researcher
+
+```text
+Email: researcher@orqix.ai
+Password: researcher_pass
+```
+
+### Administrator
+
+```text
+Email: admin@orqix.ai
+Password: admin_pass
+```
+
+---
+
+## Roadmap
+
+* Kubernetes Native Deployment
+* Distributed Worker Pools
+* Ray Integration
+* Bayesian Hyperparameter Optimization
+* AutoML Pipelines
+* Multi-Tenant Organizations
+* RBAC Enforcement
+* LLM Copilot for Experiment Planning
+* Cost Prediction Engine
+* Runtime Prediction Engine
+
+---
+
+## Security
+
+* JWT Authentication
+* Role-Based Access Control
+* Service Isolation
+* Audit Logging
+* Secure Object Storage
+
+---
+
+## License
+
+MIT License
+
+Copyright (c) 2026
+
+Purnendu Raghav Srivastava
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software.
+
+See the LICENSE file for complete details.
+
+---
+
+## Author
+
+### Purnendu Raghav Srivastava
+
+---
+
+⭐ If you find Orqix useful, consider starring the repository.
